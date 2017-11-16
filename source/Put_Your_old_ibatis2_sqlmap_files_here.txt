@@ -1,0 +1,130 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<!DOCTYPE sqlMap     
+   PUBLIC "-//ibatis.apache.org//DTD SQL Map 2.0//EN"     
+   "http://ibatis.apache.org/dtd/sql-map-2.dtd">
+
+<sqlMap namespace="batch-rnwrecv">
+
+	<typeAlias alias="gdbtrnwrecv1" type="com.imodule.lifepro.service.batch.rnwrecv.GdbtRnwRecv1" />
+	<typeAlias alias="gdbtrnwrecv2" type="com.imodule.lifepro.service.batch.rnwrecv.GdbtRnwRecv2" />
+	
+	<select id="queryAllRnwRecv1" resultClass="gdbtrnwrecv1">
+	   <![CDATA[
+		SELECT  
+			a.PlcNo,
+			a.UnionPlcNo, 
+			a.PrimPrdCode,
+			a.RecvWay,
+			a.RecvMode,
+			a.Branch,			
+			a.EfftDate,
+			a.CurSttlDate,
+			a.IsTuPlc,
+			a.CurTuSttlDate,			
+			a.ApplyStatus,	
+			a.CurIncAmtDate,			
+	      	a.IsTuHoilyDay,
+	      	a.DpstDrawMode,
+	      	a.AnuDrawMode
+		FROM  T1PlcBase a,t_ComFeeOld2 d
+		WHERE a.Status = '08'  AND   
+	    (d.currency='01' OR a.plcno in (select plcno from TmpPlcList1))
+	    ]]> 
+	</select>
+	
+	<select id="queryAllRnwRecv2" resultClass="gdbtrnwrecv2">
+	<![CDATA[
+		SELECT  a.PlcNo,
+				a.EdrNo,
+				a.PrdCode,
+				a.PrimPrdCode,
+				a.RecvMode,
+				a.InsAmt,
+				a.StdPrm,
+				a.IssueDate,
+				a.RecvToDate,
+				a.NextRecvDate,
+				a.Currency,
+				a.RealPrm,
+				a.Status ,
+				a.InsExprtDate,
+				a.PrdSerNo,
+				a.PrdSource,
+				a.DvdChc,
+				a.DdtPrdSerNo,
+				a.IsTuPrd,
+				b.isddtprd			
+		FROM  T1Prd a,t_prd b
+		WHERE a.Status = '1' AND
+			  a.PlcNo = #plcNo# AND
+			  a.NextRecvDate < a.RecvExprtDate 
+			  AND (a.NextRecvDate <= #calcDate# OR a.NextRecvDate IS NULL)   
+			  AND 
+			  (
+			  	a.EndDate IS NULL  OR
+			    (
+			    	(a.StartDate <= #calcDate# OR a.StartDate IS NULL) 
+			    	AND 
+			    	a.EndDate >= #calcDate#
+			    )
+			   )
+			  AND a.prdcode=b.prdcode	 
+		 order by b.isddtprd 
+		 ]]> 
+	</select>
+	
+	<select id="queryDelayEfftCnt" resultClass="java.lang.Integer">
+	 <![CDATA[
+		  SELECT count(*) cnt 
+		  FROM  t1edrbase 
+		  WHERE Status = '08'   
+				AND	EfftDate <= #calcDate#  	 
+				AND IsEfft = '0' 	
+				AND plcno= #plcNo# 				
+				AND	(EdrType = '02' OR EdrType = '20' 	)
+		]]> 
+	</select>
+	
+	<select id="queryPlcAcctMdfEdrCnt" resultClass="java.lang.Integer">
+	 <![CDATA[
+		  SELECT count(*) cnt 
+		  FROM t1edrbase
+		  WHERE PlcNo = #plcNo#	 
+		  AND edrtype= '12'
+		  AND status in ('04')
+		  ]]> 
+	</select>
+	
+	<select id="queryDDTPlcCnt" resultClass="java.lang.Integer">
+	 <![CDATA[
+		SELECT Count(plcno) cnt 
+		FROM  t1rlsprmdtl
+		WHERE plcno = #plcNo# 
+		AND prdcode = #prdCode#     	
+		AND prdserno= #prdSerNo# 
+		AND ddtStartDate <= #calcDate# 
+		AND ddtEndDate >= #calcDate# 
+		]]> 
+	</select>
+	
+	<update id="updateDDTT1Prd">
+	 <![CDATA[
+		UPDATE T1Prd 
+		SET NextRecvDate = #nextRecvDate#,
+		    RecvToDate	 = #recvToDate# 
+		WHERE plcno = #plcNo#   
+			  AND enddate is null 
+			  AND prdserno = #prdSerNo# 
+			  ]]> 
+	</update>
+	
+	<update id="updateDDTT1plcbase">
+	 <![CDATA[
+		UPDATE T1PlcBase 
+		SET RecvToDate = #recvToDate#
+		WHERE PlcNo = #plcNo# 
+		]]> 
+	</update>
+	
+</sqlMap>
